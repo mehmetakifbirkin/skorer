@@ -1,0 +1,397 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>UNO / OKEY Skorer (Windows 11 Stili)</title>
+<style>
+  :root{
+    --bg:#f3f6fb;
+    --card:#ffffff;
+    --accent:#0a84ff;
+    --muted:#6b7280;
+    --glass: rgba(255,255,255,0.6);
+    --win-shadow: 0 6px 22px rgba(12, 24, 48, 0.10);
+    --win-radius: 14px;
+    --max-width:1100px;
+  }
+  html,body{
+    height:100%;
+    margin:0;
+    font-family:"Segoe UI", Roboto, system-ui, -apple-system, "Helvetica Neue", Arial;
+    background:linear-gradient(180deg,#eef4ff 0%,var(--bg) 100%);
+    color:#111;
+  }
+  .container{
+    max-width:var(--max-width);
+    margin:28px auto;
+    padding:22px;
+  }
+  .card{
+    background:var(--card);
+    border-radius:var(--win-radius);
+    box-shadow:var(--win-shadow);
+    padding:18px;
+  }
+  .header{
+    display:flex;
+    align-items:center;
+    gap:12px;
+  }
+  .logo{
+    width:56px;
+    height:56px;
+    border-radius:10px;
+    background:linear-gradient(135deg,var(--accent),#5ec0ff);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    color:white;
+    font-weight:700;
+    font-size:18px;
+    box-shadow:0 6px 18px rgba(10,132,255,0.18);
+  }
+  h1{
+    margin:0;
+    font-size:18px;
+  }
+  p.lead{
+    color:var(--muted);
+    margin:6px 0 14px 0;
+  }
+  .modes{
+    display:flex;
+    gap:12px;
+    margin-top:14px;
+    flex-wrap:wrap;
+  }
+  .mode{
+    padding:18px;
+    border-radius:12px;
+    background:linear-gradient(180deg, rgba(10,132,255,0.06), rgba(10,132,255,0.02));
+    min-width:140px;
+    text-align:center;
+    cursor:pointer;
+    border:1px solid rgba(10,132,255,0.06);
+  }
+  .mode.secondary{
+    background:linear-gradient(180deg, rgba(16,185,129,0.06), rgba(16,185,129,0.02));
+    border:1px solid rgba(16,185,129,0.06);
+  }
+  .mode h3{
+    margin:0 0 6px 0;
+  }
+  .small{
+    font-size:13px;
+    color:var(--muted)
+  }
+  .board{
+    margin-top:18px;
+  }
+  .controls{
+    display:flex;
+    gap:12px;
+    align-items:center;
+    margin-top:12px;
+    flex-wrap:wrap;
+  }
+  button.btn{
+    background:var(--accent);
+    color:#fff;
+    border:none;
+    padding:10px 14px;
+    border-radius:10px;
+    cursor:pointer;
+    font-weight:600;
+    box-shadow:0 6px 14px rgba(10,132,255,0.12);
+  }
+  button.ghost{
+    background:transparent;
+    border:1px solid rgba(0,0,0,0.06);
+    padding:8px 12px;
+    color:var(--muted);
+  }
+<script>
+(function(){
+  // Utilities
+  const el = (q)=> document.querySelector(q);
+  const create = (t, attrs={}, children=[])=>{
+    const n = document.createElement(t);
+    for(const k in attrs){
+      if(k.startsWith('on')) n.addEventListener(k.slice(2), attrs[k]);
+      else if(k === 'html') n.innerHTML = attrs[k];
+      else n.setAttribute(k, attrs[k]);
+    }
+    children.forEach(c=> n.appendChild(typeof c === 'string' ? document.createTextNode(c) : c));
+    return n;
+  };
+
+  const startArea = el('#startModes');
+  const appArea = el('#appArea');
+  const modalRoot = el('#modalRoot');
+
+  const saveState = (key, obj) => localStorage.setItem('skorer:'+key, JSON.stringify(obj));
+  const loadState = (key) => {
+    const v = localStorage.getItem('skorer:'+key); 
+    if(!v) return null;
+    try{return JSON.parse(v)}catch(e){return null;}
+  };
+
+  function parseScoreInput(raw){
+    if(raw === null || raw === undefined) return 0;
+    raw = String(raw).trim();
+    if(raw === '') return 0;
+    if(raw === '-') return -100;
+    if(/^-\d+$/.test(raw)) return parseInt(raw,10);
+    if(/^\d+$/.test(raw)) return parseInt(raw,10);
+    if(/^[+-]?\d+$/.test(raw)) return parseInt(raw,10);
+    return 0;
+  }
+
+  function clearModal(){ modalRoot.innerHTML=''; }
+  function showModal(contentEl){
+    clearModal();
+    const back = create('div',{class:'modal-back'});
+    const m = create('div',{class:'modal'});
+    m.appendChild(contentEl);
+    back.appendChild(m);
+    modalRoot.appendChild(back);
+    back.addEventListener('click',(e)=>{ if(e.target === back) clearModal(); });
+    return {back,m};
+  }
+
+  /*
+    --------------------
+      UNO BAŞLANGICI
+    --------------------
+  */
+  el('#unoBtn').addEventListener('click', ()=>{
+    const content = create('div',{},[
+      create('h3',{html:'UNO — Oyuncu Sayısı'}),
+      create('p',{class:'muted',html:'1 ile 10 arasında bir sayı girin (max 10).'}),
+      create('div',{class:'opt-row'},[
+        create('input',{type:'number',min:1,max:10,value:4,id:'unoCount',style:'padding:8px;border-radius:8px;border:1px solid rgba(0,0,0,0.08);width:90px'}),
+        create('button',{class:'btn',onClick: ()=> {
+          const n = Math.max(1, Math.min(10, parseInt(document.getElementById('unoCount').value||0)));
+          clearModal();
+          buildUno(n);
+        }},['Başla'])
+      ])
+    ]);
+    showModal(content);
+  });
+
+  function buildUno(playerCount){
+    startArea.style.display = 'none';
+    appArea.style.display = 'block';
+    appArea.innerHTML = '';
+    const stKey = 'uno_v1';
+    const saved = loadState(stKey) || null;
+
+    const topbar = create('div',{class:'topbar'},[
+      create('div',{},[
+        create('strong',{html:'UNO'}),
+        create('div',{class:'hint',html:'Her el için puan girin. "-" tek başına = -100.'})
+      ]),
+      create('div',{},[
+        create('button',{class:'ghost smallbtn',onClick: ()=> { startArea.style.display='flex'; appArea.style.display='none'; }},['Geri']),
+        create('button',{class:'ghost smallbtn',onClick: ()=> { localStorage.removeItem('skorer:'+stKey); location.reload(); }},['Sıfırla'])
+      ])
+    ]);
+    appArea.appendChild(topbar);
+
+    const controls = create('div',{class:'controls'},[
+      create('button',{class:'btn',onClick: ()=> addRow()},['Satır Ekle']),
+      create('button',{class:'ghost',onClick: ()=> saveNow()},['Kaydet']),
+      create('div',{class:'info',html:'Hedef: 500 puan'})
+    ]);
+    appArea.appendChild(controls);
+
+    const tableWrap = create('div',{class:'table-wrap'});
+    const table = create('table',{id:'unoTable'});
+    const thead = create('thead');
+    const tbody = create('tbody',{id:'unoBody'});
+
+    const headerRow = create('tr');
+    headerRow.appendChild(create('th',{class:'namecol',html:'Oyuncular'}));
+
+    const nameInputs = [];
+
+    for(let i=0;i<playerCount;i++){
+      const th = create('th');
+      const input = create('input',{class:'name',value:(saved?.names?.[i] ?? `Oyuncu ${i+1}`)});
+      const total = create('span',{class:'total-badge',id:`uno_total_${i}`,html:'(0)'});
+      th.appendChild(input); th.appendChild(total);
+      headerRow.appendChild(th);
+      nameInputs.push(input);
+
+      input.addEventListener('input',()=>{ renderTotals(); saveNow(); });
+    }
+
+    thead.appendChild(headerRow);
+    table.appendChild(thead);
+    table.appendChild(tbody);
+    tableWrap.appendChild(table);
+    appArea.appendChild(tableWrap);
+
+    function addRow(prefilled=null){
+      const tr = create('tr');
+      tr.appendChild(create('td',{class:'namecol',html:`El ${tbody.children.length + 1}`}));
+      for(let c=0;c<playerCount;c++){
+        const td = create('td');
+        const inp = create('input',{class:'score',value:preFilled?.[c] ?? ''});
+        inp.addEventListener('input',()=>{ renderTotals(); saveNow(); });
+        td.appendChild(inp);
+        tr.appendChild(td);
+      }
+      tbody.appendChild(tr);
+      renderTotals();
+    }
+
+    if(saved?.rows){
+      saved.rows.forEach(r => addRow(r));
+    } else {
+      for(let i=0;i<6;i++) addRow();
+    }
+
+    function renderTotals(){
+      const totals = new Array(playerCount).fill(0);
+      Array.from(tbody.children).forEach(tr=>{
+        const inputs = tr.querySelectorAll('input');
+        inputs.forEach((inp,ci)=> totals[ci] += parseScoreInput(inp.value));
+      });
+
+      const max = Math.max(...totals);
+      const min = Math.min(...totals);
+
+      for(let i=0;i<playerCount;i++){
+        el(`#uno_total_${i}`).textContent = `(${totals[i]})`;
+        const th = thead.children[0].children[i+1];
+        th.classList.remove('best','worst');
+        if(totals[i] === max) th.classList.add('best');
+        if(totals[i] === min) th.classList.add('worst');
+      }
+    }
+
+    function saveNow(){
+      const rows = Array.from(tbody.children).map(tr =>
+        Array.from(tr.children).slice(1).map(td => td.querySelector('input').value)
+      );
+      saveState(stKey,{names:nameInputs.map(i=>i.value),rows});
+    }
+
+    renderTotals();
+  }
+
+  /*
+    --------------------
+      OKEY BAŞLANGICI
+    --------------------
+  */
+
+  el('#okeyBtn').addEventListener('click', ()=>{
+    const content = create('div',{},[
+      create('h3',{html:'OKEY — Mod Seç'}),
+      create('p',{class:'muted',html:'Eşli = 2 kişi, Tek = 4 kişi. 11 el hazır.'}),
+      create('div',{class:'opt-row'},[
+        create('button',{class:'btn',onClick:()=>{clearModal(); buildOkey('esli');}},['Eşli']),
+        create('button',{class:'ghost',onClick:()=>{clearModal(); buildOkey('tek');}},['Tek'])
+      ])
+    ]);
+    showModal(content);
+  });
+
+  function buildOkey(mode){
+    startArea.style.display = 'none';
+    appArea.style.display = 'block';
+    appArea.innerHTML = '';
+
+    const stKey = 'okey_v1_'+mode;
+    const saved = loadState(stKey);
+
+    const colCount = (mode === 'esli') ? 2 : 4;
+
+    const topbar = create('div',{class:'topbar'},[
+      create('div',{},[
+        create('strong',{html:`OKEY — ${mode==='esli'? 'Eşli':'Tek'}`})
+      ]),
+      create('div',{},[
+        create('button',{class:'ghost smallbtn',onClick:()=>{startArea.style.display='flex'; appArea.style.display='none';}},['Geri']),
+        create('button',{class:'ghost smallbtn',onClick:()=>{localStorage.removeItem('skorer:'+stKey); location.reload();}},['Sıfırla'])
+      ])
+    ]);
+    appArea.appendChild(topbar);
+
+    const tableWrap = create('div',{class:'table-wrap'});
+    const table = create('table');
+    const thead = create('thead');
+    const tbody = create('tbody',{id:'okeyBody'});
+
+    const headerRow = create('tr');
+    headerRow.appendChild(create('th',{class:'namecol',html:'İsimler'}));
+
+    const nameInputs = [];
+
+    for(let i=0;i<colCount;i++){
+      const th = create('th');
+      const inp = create('input',{class:'name',value:(saved?.names?.[i] ?? `Oyuncu ${i+1}`)});
+      const total = create('span',{class:'total-badge',id:`okey_total_${i}`,html:'(0)'});
+      th.appendChild(inp); th.appendChild(total);
+      headerRow.appendChild(th);
+      nameInputs.push(inp);
+      inp.addEventListener('input',()=>{ renderTotals(); saveNow(); });
+    }
+
+    thead.appendChild(headerRow);
+    table.appendChild(thead);
+    table.appendChild(tbody);
+    tableWrap.appendChild(table);
+    appArea.appendChild(tableWrap);
+
+    for(let r=0;r<11;r++){
+      const tr = create('tr');
+      tr.appendChild(create('td',{class:'namecol',html:`El ${r+1}`}));
+      for(let c=0;c<colCount;c++){
+        const td = create('td');
+        const v = saved?.rows?.[r]?.[c] ?? '';
+        const inp = create('input',{class:'score',value:v});
+        inp.addEventListener('input',()=>{ renderTotals(); saveNow(); });
+        td.appendChild(inp);
+        tr.appendChild(td);
+      }
+      tbody.appendChild(tr);
+    }
+
+    function renderTotals(){
+      const totals = new Array(colCount).fill(0);
+      Array.from(tbody.children).forEach(tr=>{
+        const inputs = tr.querySelectorAll('input');
+        inputs.forEach((inp,ci)=> totals[ci] += parseScoreInput(inp.value));
+      });
+
+      const max = Math.max(...totals);
+      const min = Math.min(...totals);
+
+      for(let i=0;i<colCount;i++){
+        el(`#okey_total_${i}`).textContent = `(${totals[i]})`;
+        const th = thead.children[0].children[i+1];
+        th.classList.remove('best','worst');
+        if(totals[i] === min) th.classList.add('best');
+        if(totals[i] === max) th.classList.add('worst');
+      }
+    }
+
+    function saveNow(){
+      const rows = Array.from(tbody.children).map(tr =>
+        Array.from(tr.children).slice(1).map(td => td.querySelector('input').value)
+      );
+      saveState(stKey,{names:nameInputs.map(i=>i.value),rows});
+    }
+
+    renderTotals();
+  }
+
+})();
+</script>
+</body>
+</html>
