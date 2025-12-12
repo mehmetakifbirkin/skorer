@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Skor Takip Uygulaması (Win11)</title>
+    
+    <style>
+        /* CSS Başlangıcı */
+        
+        :root {
+            /* Windows 11 Renk Paleti (Fluent Design) */
+            --win-bg-light: #f3f3f3; /* Açık arka plan */
+            --win-bg-dark: #ffffff;
+            --win-accent-blue: #0078d4; /* Vurgu rengi */
+            --win-text-dark: #1f1f1f;
+            --win-border-light: #e0e0e0;
+            --win-shadow: 0 4px 12px rgba(0, 0, 0, 0.05); /* Yumuşak gölge */
+            --win-radius: 8px; /* Köşe yuvarlaklığı */
+            
+            /* Özel Skor Renkleri */
+            --score-best: #4caf50; /* Yeşil */
+            --score-worst: #f44336; /* Kırmızı */
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--win-bg-light);
+            color: var(--win-text-dark);
+            margin: 0;
+            padding: 0;
+            display: flex;
+            min-height: 100vh;
+        }
+
+        .app-container {
+            display: flex;
+            width: 100%;
+            max-width: 1200px;
+            margin: 20px auto;
+            background: var(--win-bg-dark);
+            border-radius: var(--win-radius);
+            box-shadow: var(--win-shadow);
+            overflow: hidden;
+            min-height: 80vh;
+        }
+
+        /* Sidebar Stili */
+        .sidebar {
+            width: 250px;
+            padding: 20px 15px;
+            border-right: 1px solid var(--win-border-light);
+            background-color: var(--win-bg-light);
+            box-sizing: border-box;
+            flex-shrink: 0;
+        }
+
+        .app-title {
+            font-size: 1.5em;
+            font-weight: 600;
+            margin-bottom: 30px;
+            padding-left: 10px;
+        }
+
+        .nav-button {
+            width: 100%;
+            padding: 12px 10px;
+            margin-bottom: 5px;
+            text-align: left;
+            border: none;
+            background: none;
+            color: var(--win-text-dark);
+            font-size: 1em;
+            cursor: pointer;
+            border-radius: 4px;
+            transition: background-color 0.2s, color 0.2s;
+            box-sizing: border-box;
+        }
+
+        .nav-button:hover:not(.active) {
+            background-color: rgba(0, 120, 212, 0.1);
+        }
+
+        .nav-button.active {
+            background-color: var(--win-accent-blue);
+            color: var(--win-bg-dark);
+            font-weight: 600;
+        }
+
+        /* Ana İçerik Alanı */
+        .main-content {
+            flex-grow: 1;
+            padding: 30px;
+            overflow-y: auto;
+        }
+
+        .screen {
+            display: none;
+        }
+
+        .screen.active {
+            display: block;
+        }
+
+        /* Tablo Stili (Ortak) */
+        .score-table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0 5px; /* Satırlar arasına boşluk */
+        }
+
+        .score-table th, .score-table td {
+            padding: 10px;
+            text-align: center;
+            /* border-bottom: 1px solid var(--win-border-light); */
+        }
+        
+        .score-table tr {
+             border-radius: 4px;
+             background-color: #fcfcfc;
+        }
+
+        .score-table thead tr {
+             background-color: var(--win-bg-light);
+        }
+
+        .score-table th {
+            font-weight: 600;
+            position: sticky; 
+            top: -30px; /* Üst padding'i dengelemek için */
+            z-index: 10;
+        }
+
+        /* Oyuncu Adı Girişi */
+        .player-name-input {
+            border: none;
+            border-bottom: 2px solid transparent;
+            transition: border-bottom-color 0.3s;
+            text-align: center;
+            font-weight: bold;
+            font-size: 1em;
+            width: 90%;
+            background: none;
+            padding: 5px 0;
+        }
+
+        .player-name-input:focus {
+            outline: none;
+            border-bottom-color: var(--win-accent-blue);
+        }
+
+        /* Puan Girişi */
+        .score-input {
+            border: 1px solid var(--win-border-light);
+            border-radius: 4px;
+            padding: 5px;
+            text-align: center;
+            width: 80%;
+            transition: border-color 0.2s;
+        }
+        
+        .score-input:focus {
+            outline: none;
+            border-color: var(--win-accent-blue);
+            box-shadow: 0 0 0 1px var(--win-accent-blue);
+        }
+
+        /* Toplam Puan Satırı */
+        .total-score td {
+            font-weight: 700;
+            font-size: 1.2em;
+            background-color: rgba(0, 120, 212, 0.1); 
+            border-radius: 4px;
+            margin-top: 5px;
+        }
+
+        /* Renklendirme Sınıfları */
+        .best-score {
+            color: var(--score-best) !important;
+            font-weight: bold;
+            font-size: 1.3em !important;
+        }
+
+        .worst-score {
+            color: var(--score-worst) !important;
+            font-weight: bold;
+            font-size: 1.3em !important;
+        }
+        
+        #uno-player-setup, #okey-mode-buttons {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            margin-bottom: 20px;
+            padding: 10px;
+            border: 1px solid var(--win-border-light);
+            border-radius: var(--win-radius);
+            background-color: #f9f9f9;
+        }
+
+        /* CSS Bitişi */
+    </style>
+</head>
+<body>
+
+    <div class="app-container">
+        <div class="sidebar">
+            <h2 class="app-title">Skor Takip</h2>
+            <button class="nav-button active" onclick="showScreen('home')">🏠 Ana Ekran</button>
+            <button class="nav-button" onclick="showScreen('uno')">🔴 UNO Skorbordu</button>
+            <button class="nav-button" onclick="showScreen('okey')">🀄 OKEY Skorbordu</button>
+        </div>
+
+        <div class="main-content">
+            <div id="home-screen" class="screen active">
+                <h1>Oyun Seçimi</h1>
+                <p>Başlamak için soldaki menüden bir oyun seçin.</p>
+            </div>
+
+            <div id="uno-screen" class="screen">
+                <h2>UNO Skorbordu (500'e İlk Ulaşan Kazanır)</h2>
+                
+                <div id="uno-player-setup">
+                    <label for="uno-player-count">Oyuncu Sayısı (2-10):</label>
+                    <input type="number" id="uno-player-count" min="2" max="10" value="4" class="score-input" style="width: 100px;">
+                    <button onclick="createUnoTable()" class="nav-button active" style="width: auto;">Skorbordu Oluştur</button>
+                </div>
+
+                <div id="uno-scoreboard-area" style="display: none;">
+                    <div style="margin-bottom: 15px; display: flex; justify-content: flex-end;">
+                        <button onclick="addUnoScoreRow()" class="nav-button" style="width: auto; background-color: var(--score-best); color: white;">+ Yeni El Ekle</button>
+                    </div>
+                    
+                    <table id="uno-table" class="score-table">
+                        <thead>
+                            <tr id="uno-header-row">
+                                </tr>
+                            <tr id="uno-total-row" class="total-score">
+                                </tr>
+                        </thead>
+                        <tbody id="uno-score-body">
+                            </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div id="okey-screen" class="screen">
+                <h2>OKEY Skorbordu (En Düşük Puan Kazanır)</h2>
+
+                <div id="okey-mode-buttons">
+                    <button onclick="setOkeyMode('cift')" class="nav-button active" id="okey-mode-cift" style="width: auto;">Eşli Oyun (2 Sütun)</button>
+                    <button onclick="setOkeyMode('tek')" class="nav-button" id="okey-mode-tek" style="width: auto;">Tek Oyun (4 Sütun)</button>
+                </div>
+
+                <table id="okey-table" class="score-table">
+                    <thead>
+                        <tr id="okey-header-row">
+                            </tr>
+                        <tr id="okey-total-row" class="total-score">
+                            </tr>
+                    </thead>
+                    <tbody id="okey-score-body">
+                        </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // JavaScript Başlangıcı
+
+        // --- Ortak Fonksiyonlar ---
+        window.showScreen = (screenId) => {
+            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+            document.getElementById(`${screenId}-screen`).classList.add('active');
+            document.querySelectorAll('.nav-button').forEach(btn => btn.classList.remove('active'));
+            document.querySelector(`.nav-button[onclick="showScreen('${screenId}')"]`).classList.add('active');
+        };
+
+        // --- UNO Fonksiyonları ---
+
+        function createUnoTable() {
+            const countInput = document.getElementById('uno-player-count');
+            const count = parseInt(countInput.value);
+            const tableBody = document.getElementById('uno-score-body');
+            const headerRow = document.getElementById('uno-header-row');
+            const totalRow = document.getElementById('uno-total-row');
+
+            if (count < 2 || count > 10) {
+                alert("Lütfen 2 ile 10 arasında bir oyuncu sayısı girin.");
+                return;
+            }
+
+            // Başlık ve Toplam Satırlarını Temizle
+            headerRow.innerHTML = '';
+            totalRow.innerHTML = '';
+            tableBody.innerHTML = '';
+            
+            // Oyuncu Başlıklarını Oluştur
+            for (let i = 1; i <= count; i++) {
+                headerRow.innerHTML += `<th><input type="text" class="player-name-input" placeholder="Oyuncu ${i}" oninput="calculateUnoScores()"></th>`;
+                totalRow.innerHTML += `<td id="uno-total-${i}" class="total-score">0</td>`;
+            }
+
+            // İlk boş satırları ekle (daha iyi görünüm için)
+            for (let r = 0; r < 3; r++) {
+                addUnoScoreRow();
+            }
+            
+            document.getElementById('uno-player-setup').style.display = 'none';
+            document.getElementById('uno-scoreboard-area').style.display = 'block';
+        }
+
+        function addUnoScoreRow() {
+            const count = document.getElementById('uno-header-row').cells.length;
+            const tableBody = document.getElementById('uno-score-body');
+            let newRow = tableBody.insertRow();
+            
+            for (let i = 0; i < count; i++) {
+                newRow.innerHTML += `<td><input type="number" class="score-input" min="0" oninput="calculateUnoScores()"></td>`;
+            }
+        }
+
+        function calculateUnoScores() {
+            const totalCells = document.querySelectorAll('#uno-total-row td');
+            const rowCount = document.getElementById('uno-score-body').rows.length;
+            const playerCount = totalCells.length;
+            let totalScores = [];
+
+            // Puanları Topla
+            for (let i = 0; i < playerCount; i++) {
+                let total = 0;
+                for (let r = 0; r < rowCount; r++) {
+                    const input = document.querySelector(`#uno-score-body tr:nth-child(${r + 1}) td:nth-child(${i + 1}) .score-input`);
+                    if (input && input.value) {
+                        // UNO'da negatif puan olmaz, sadece pozitif sayıları toplarız.
+                        total += Math.abs(parseInt(input.value)) || 0; 
+                    }
+                }
+                totalScores.push(total);
+                document.getElementById(`uno-total-${i + 1}`).textContent = total;
+            }
+
+            // Renklendirme Mantığı (UNO: En Yüksek Yeşil, En Düşük Kırmızı)
+            const maxScore = Math.max(...totalScores);
+            const minScore = Math.min(...totalScores);
+
+            totalCells.forEach((cell, index) => {
+                cell.classList.remove('best-score', 'worst-score');
+                const score = totalScores[index];
+                
+                // En yüksek puana sahip oyuncu Yeşil
+                if (score === maxScore) {
+                    cell.classList.add('best-score'); 
+                } 
+                // En düşük puana sahip oyuncu Kırmızı
+                else if (score === minScore) {
+                    cell.classList.add('worst-score'); 
+                }
+            });
+        }
+
+        // --- OKEY Fonksiyonları ---
+        
+        let okeyPlayerCount = 4; // Başlangıçta Tek (4) oyuncu
+
+        function setOkeyMode(mode) {
+            const ciftBtn = document.getElementById('okey-mode-cift');
+            const tekBtn = document.getElementById('okey-mode-tek');
+            
+            if (mode === 'cift') {
+                okeyPlayerCount = 2;
+                ciftBtn.classList.add('active');
+                tekBtn.classList.remove('active');
+            } else {
+                okeyPlayerCount = 4;
+                ciftBtn.classList.remove('active');
+                tekBtn.classList.add('active');
+            }
+            createOkeyTable();
+        }
+
+        function createOkeyTable() {
+            const headerRow = document.getElementById('okey-header-row');
+            const totalRow = document.getElementById('okey-total-row');
+            const tableBody = document.getElementById('okey-score-body');
+            const playerCount = okeyPlayerCount;
+
+            // Başlık ve Toplam Satırlarını Temizle
+            headerRow.innerHTML = '';
+            totalRow.innerHTML = '';
+            tableBody.innerHTML = '';
+
+            // Oyuncu Başlıklarını Oluştur
+            for (let i = 1; i <= playerCount; i++) {
+                const defaultName = playerCount === 2 ? `Takım ${i}` : `Oyuncu ${i}`;
+                headerRow.innerHTML += `<th><input type="text" class="player-name-input" placeholder="${defaultName}" oninput="calculateOkeyScores()"></th>`;
+                totalRow.innerHTML += `<td id="okey-total-${i}" class="total-score">0</td>`;
+            }
+
+            // Sabit 11 El (Satır) Oluştur
+            for (let r = 0; r < 11; r++) {
+                let newRow = tableBody.insertRow();
+                for (let i = 0; i < playerCount; i++) {
+                    // type="text" kullanılarak "-" ve "0" gibi tüm değerlerin girilmesine izin verilir.
+                    newRow.innerHTML += `<td><input type="text" class="score-input okey-score-input" placeholder="El ${r + 1} (örn: -100)" oninput="calculateOkeyScores()"></td>`;
+                }
+            }
+            calculateOkeyScores(); // Yeni tablo oluşturulduğunda sıfırları hesapla
+        }
+
+        function calculateOkeyScores() {
+            const totalCells = document.querySelectorAll('#okey-total-row td');
+            const rowCount = document.getElementById('okey-score-body').rows.length;
+            const playerCount = totalCells.length;
+            let totalScores = [];
+
+            // Puanları Topla (Negatif Desteği ile)
+            for (let i = 0; i < playerCount; i++) {
+                let total = 0;
+                for (let r = 0; r < rowCount; r++) {
+                    const input = document.querySelector(`#okey-score-body tr:nth-child(${r + 1}) td:nth-child(${i + 1}) .okey-score-input`);
+                    if (input && input.value) {
+                        // Girişi sayıya çevir (negatif sayılar için). Geçerli sayı değilse 0 kabul edilir.
+                        const scoreValue = parseInt(input.value) || 0;
+                        total += scoreValue;
+                    }
+                }
+                totalScores.push(total);
+                document.getElementById(`okey-total-${i + 1}`).textContent = total;
+            }
+
+            // Renklendirme Mantığı (OKEY: En Düşük Yeşil, En Yüksek Kırmızı)
+            if (totalScores.length > 0) {
+                const maxScore = Math.max(...totalScores);
+                const minScore = Math.min(...totalScores);
+
+                totalCells.forEach((cell, index) => {
+                    cell.classList.remove('best-score', 'worst-score');
+                    const score = totalScores[index];
+                    
+                    // En düşük puan (En İyi Skor) Yeşil
+                    if (score === minScore) {
+                        cell.classList.add('best-score'); 
+                    } 
+                    // En yüksek puan (En Kötü Skor) Kırmızı
+                    else if (score === maxScore) {
+                        cell.classList.add('worst-score'); 
+                    }
+                });
+            }
+        }
+
+        // --- Uygulama Başlangıcı ---
+        document.addEventListener('DOMContentLoaded', () => {
+            // Okey tablosunu varsayılan olarak oluştur (Eşli)
+            setOkeyMode('cift');
+            
+            // UNO tablosu için oyuncu sayısını ayarla, tabloyu henüz gösterme
+            const unoCountInput = document.getElementById('uno-player-count');
+            unoCountInput.value = 4;
+            
+            // Başlangıç ekranını göster
+            showScreen('home');
+        });
+
+        // JavaScript Bitişi
+    </script>
+</body>
+</html>
